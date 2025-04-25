@@ -1,3 +1,4 @@
+
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
@@ -47,7 +48,7 @@ fun main() = application {
     val viewModel = remember { GameViewModel() }
 
     Window(
-        state = rememberWindowState(width = GameViewModel.EDGE_X.dp, height = GameViewModel.GROUND_Y.dp),
+        state = rememberWindowState(width = GameViewModel.EDGE_X.dp + 50.dp, height = GameViewModel.GROUND_Y.dp + 75.dp),
         onCloseRequest = ::exitApplication,
         onKeyEvent = { keyEvent ->
             if (keyEvent.type == KeyEventType.KeyDown) {
@@ -59,6 +60,11 @@ fun main() = application {
 
                     Key.D, Key.DirectionRight -> {
                         viewModel.moveRight()
+                        true
+                    }
+
+                    Key.Spacebar -> {
+                        viewModel.jump()
                         true
                     }
 

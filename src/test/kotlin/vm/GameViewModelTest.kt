@@ -14,7 +14,8 @@ class GameViewModelTest {
     }
 
     @Test
-    fun playerFallsDown() {
+    fun `player falls down if not on ground`() {
+        viewModel.player.y = GameViewModel.GROUND_Y - GameViewModel.PLAYER_HEIGHT - 100f
         val initialY = viewModel.player.y
         viewModel.update()
         assertEquals(initialY + 2f, viewModel.player.y)
@@ -54,5 +55,13 @@ class GameViewModelTest {
     fun `player does not move past right edge`() {
         repeat(250) { viewModel.moveRight() }
         assertTrue(viewModel.player.x <= GameViewModel.EDGE_X)
+    }
+
+    @Test
+    fun `player jumps up`() {
+        val initialY = viewModel.player.y
+        viewModel.jump()
+        viewModel.update()
+        assertTrue(viewModel.player.y < initialY)
     }
 }
