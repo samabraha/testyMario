@@ -1,6 +1,5 @@
 import androidx.compose.runtime.Composable
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.skiko.currentNanoTime
@@ -10,28 +9,32 @@ val logger: Logger = Logger.getLogger("com.develogica")
 
 
 class Renderer(
-    private val targetFPS: Int = 60,
+    targetFPS: Int = 60,
     private val update: (deltaTime: Float) -> Unit,
-    private val render: @Composable () -> Unit
+    private val onFrame:() -> Unit
 ) {
     private val frameTimeNanos = 1_000_000_000L / targetFPS
     private var running = true
 
-    fun start() {
+    fun start(scope: CoroutineScope) {
         logger.info("Renderer started")
-        CoroutineScope(Dispatchers.Default).launch {
+        scope.launch {
+            var lastTime = currentNanoTime()
             while (running) {
-                val startTime = System.currentTimeMillis()
-                update(1f / targetFPS)
-                render()
-                val elapsedTime = currentNanoTime() - startTime
+                val currentTime = currentNanoTime()
+                val deltaTime = (currentTime - lastTime) / 1_000_000_000f
+                lastTime = currentTime 
+
+                update(deltaTime)
+                onFrame()
+                
+                val elapsedTime = currentNanoTime() - currentTime
                 val sleepTime = frameTimeNanos - elapsedTime
                 if (sleepTime > 0) {
                     delay(sleepTime / 1_000_000L)
                 }
             }
         }
-
     }
 
     fun stop() {

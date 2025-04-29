@@ -38,7 +38,7 @@ class GameViewModel {
         }
     }
 
-    fun update() {
+    fun update(dt: Float) {
         updateSpeed()
 
         if (movingLeft) moveLeft()
@@ -136,6 +136,7 @@ class GameViewModel {
             platform.intersects(footRect) && feetY <= platform.y + 1f
         }
     }
+
 
     companion object {
         const val GAME_WIDTH = 800f

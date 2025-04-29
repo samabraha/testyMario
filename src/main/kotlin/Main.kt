@@ -2,9 +2,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.MaterialTheme
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -17,44 +15,29 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
-import kotlinx.coroutines.delay
-import org.jetbrains.skiko.currentNanoTime
 import vm.GameViewModel
 
 
-const val TARGET_FPS = 60
-const val frameTimeNS = 1_000_000_000L / TARGET_FPS
-var updates = 0
-var fpsTimer = currentNanoTime()
+const val TARGET_FPS = 80
+
 
 @Composable
 fun App(viewModel: GameViewModel) {
+    var frameTrigger by remember { mutableStateOf(0) }
+
+    val update: (deltaTime: Float) -> Unit = viewModel::update
+
+    val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
 
-        var previousTime = currentNanoTime()
-        var accumulator = 0L
+        val renderer = Renderer(
+            targetFPS = TARGET_FPS,
+            update = update,
+            onFrame = { frameTrigger++ }
+        )
 
-        while (true) {
-            val currentTime = currentNanoTime()
-            val elapsed = currentTime - previousTime
-            previousTime = currentTime
-            accumulator += elapsed
+        renderer.start(scope)
 
-            while (accumulator >= frameTimeNS) {
-
-                viewModel.update()
-                accumulator -= frameTimeNS
-                updates++
-            }
-
-            if (currentTime - fpsTimer >= 1_000_000_000L) {
-                println("UPS $updates")
-                updates = 0
-                fpsTimer = currentTime
-            }
-//            yield()
-            delay(1)
-        }
     }
 
     MaterialTheme {
@@ -69,6 +52,7 @@ fun App(viewModel: GameViewModel) {
             )
         }
     }
+
 }
 
 fun main() = application {
