@@ -5,6 +5,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import model.Player
 import model.Rect
+import kotlin.random.Random
 
 class GameViewModel {
     var player by mutableStateOf(Player(50f, GROUND_Y - PLAYER_HEIGHT))
@@ -22,67 +23,71 @@ class GameViewModel {
     var movingLeft = false
     var movingRight = false
 
-    var platforms = listOf(
-        Rect(x = 0f, y = GAME_HEIGHT, with = WORLD_WIDTH, height = 10f), // bottom line
-        Rect(200f, 500f, 200f, 24f),
-        Rect(550f, 550f, 100f, 32f),
-        Rect(800f, 500f, 450f, 32f),
-        Rect(950f, 400f, 150f, 72f),
-        Rect(1000f, 250f, 150f, 48f),
-        Rect(1180f, 480f, 50f, 96f),
-        Rect(1250f, 360f, 450f, 48f),
-        Rect(1440f, 50f, 100f, 24f),
-        Rect(1780f, 220f, 80f, 50f),
-        Rect(1900f, 250f, 120f, 40f),
-        Rect(2000f, 220f, 40f, 40f),
-        Rect(2150f, 400f, 60f, 80f),
-        Rect(2380f, 180f, 150f, 40f),
-        Rect(2400f, 550f, 30f, 40f),
-        Rect(2630f, 540f, 100f, 60f),
-        Rect(2850f, 80f, 40f, 40f),
-        Rect(3040f, 490f, 120f, 80f),
-        Rect(3233f, 500f, 80f, 140f),
-        Rect(3435f, 220f, 120f, 65f),
-        Rect(3780f, 50f, 160f, 40f),
-    )
+    var platforms: List<Rect> = buildList {
+        add(Rect(x = 0f, y = GAME_HEIGHT, with = WORLD_WIDTH, height = 10f)) // bottom line
+
+        repeat(30) {
+            add(
+                Rect(
+                    x = Random.nextFloat() * WORLD_WIDTH,
+                    y = Random.nextFloat() * WORLD_HEIGHT,
+                    with = Random.nextFloat() * 200,
+                    height = Random.nextFloat() * 100
+                )
+            )
+        }
+    }
 
     fun update() {
-        currentSpeed = if (movingLeft || movingRight) {
-            (currentSpeed + acceleration).coerceAtMost(maxSpeed)
-        } else WALK_STEP
+        updateSpeed()
 
         if (movingLeft) moveLeft()
         if (movingRight) moveRight()
 
+        updateVerticalMovement()
+
+        calculateCameraX()
+    }
+
+    private fun updateVerticalMovement() {
         val nextY = player.y + verticalVelocity
         val nextRect = Rect(player.x, nextY, player.width, player.height)
 
-        val topPlatform = platforms.firstOrNull { it.intersects(nextRect) }
-        if (topPlatform != null) {
-            verticalVelocity = 0f
+        val collidedPlatform = platforms.firstOrNull { it.intersects(nextRect) }
+        if (collidedPlatform != null) {
+            if (verticalVelocity > 0f) {
 
-            player = player.copy(y = topPlatform.y - player.height)
+                player = player.copy(y = collidedPlatform.y - player.height)
+            } else if (verticalVelocity < 0f) {
+
+                player = player.copy(y = collidedPlatform.y + collidedPlatform.height)
+            }
+            verticalVelocity = 0f
         } else {
             player = player.copy(y = nextY)
             verticalVelocity += GRAVITY
         }
 
-        cameraX = calculateCameraX(cameraX)
     }
 
-    fun calculateCameraX(currCameraX: Float): Float {
-        val deadZoneLeft = currCameraX + GAME_WIDTH * leftDZRatio
-        val deadZoneRight = currCameraX + GAME_WIDTH * rightDZRatio
+    private fun updateSpeed() {
+        currentSpeed = if (movingLeft || movingRight) {
+            (currentSpeed + acceleration).coerceAtMost(maxSpeed)
+        } else WALK_STEP
+
+    }
+
+    fun calculateCameraX() {
+        val deadZoneLeft = cameraX + GAME_WIDTH * leftDZRatio
+        val deadZoneRight = cameraX + GAME_WIDTH * rightDZRatio
         val playerRight = player.x + player.width
 
-        return when {
-            player.x < deadZoneLeft -> (player.x - GAME_WIDTH * leftDZRatio)
-                .coerceAtLeast(0f)
+        cameraX = when {
+            player.x < deadZoneLeft -> (player.x - GAME_WIDTH * leftDZRatio).coerceAtLeast(0f)
 
-            playerRight > deadZoneRight -> (playerRight - GAME_WIDTH * rightDZRatio)
-                .coerceAtMost(WORLD_WIDTH - GAME_WIDTH)
+            playerRight > deadZoneRight -> (playerRight - GAME_WIDTH * rightDZRatio).coerceAtMost(WORLD_WIDTH - GAME_WIDTH)
 
-            else -> currCameraX
+            else -> cameraX
         }
     }
 
@@ -119,18 +124,23 @@ class GameViewModel {
     }
 
     fun jump() {
-        val standingRect = Rect(player.x, player.y + 1f, player.width, player.height)
-        val isStanding = platforms.any { it.intersects(standingRect) }
-
-        if (isStanding) {
+        if (isStandingOnPlatform()) {
             verticalVelocity = -20f
+        }
+    }
+
+    fun isStandingOnPlatform(): Boolean {
+        val feetY = player.y + player.height
+        val footRect = Rect(x = player.x, y = feetY, player.width, height = 1f)
+        return platforms.any { platform ->
+            platform.intersects(footRect) && feetY <= platform.y + 1f
         }
     }
 
     companion object {
         const val GAME_WIDTH = 800f
         const val GAME_HEIGHT = 600f
-        const val WORLD_WIDTH = 3840f
+        const val WORLD_WIDTH = 3690f
         const val WORLD_HEIGHT = GAME_HEIGHT
 
         const val GROUND_Y = 600f

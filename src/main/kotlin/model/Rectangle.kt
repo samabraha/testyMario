@@ -30,6 +30,7 @@ class Rect {
         height = size.height
     }
 
+    /** Returns true if other [other] intersects with this one in all 4 directions. */
     fun intersects(other: Rect): Boolean {
         return x < other.x + other.width
                 && x + width > other.x

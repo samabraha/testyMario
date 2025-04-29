@@ -14,6 +14,14 @@ class GameViewModelTest {
     @BeforeEach
     fun `initialize viewModel`() {
         viewModel = GameViewModel()
+
+        /** Replace platforms for testing to avoid random failures */
+        viewModel.platforms = listOf(
+            Rect(x = 0f, GameViewModel.GROUND_Y, GameViewModel.WORLD_WIDTH, 10f),
+            Rect(x = 100f, y = 50f, with = 200f, height = 100f),
+            Rect(x = 500f, y = 100f, with = 200f, height = 100f),
+        )
+
     }
 
     @Test
@@ -28,14 +36,14 @@ class GameViewModelTest {
     fun `player moves left`() {
         val initialX = viewModel.player.x
         viewModel.moveLeft()
-        assertEquals(initialX - 5f, viewModel.player.x)
+        assertEquals(initialX - GameViewModel.WALK_STEP, viewModel.player.x)
     }
 
     @Test
     fun `player moves right`() {
         val initialX = viewModel.player.x
         viewModel.moveRight()
-        assertEquals(initialX + 5f, viewModel.player.x)
+        assertEquals(initialX + GameViewModel.WALK_STEP, viewModel.player.x)
     }
 
     @Test
@@ -111,23 +119,30 @@ class GameViewModelTest {
 
     @Test
     fun `camera does not move when player inside dead zone`() {
-        val initialCameraX = 100f
-        viewModel.player = Player(x = initialCameraX + GameViewModel.GAME_WIDTH * 0.4f)
-        val result = viewModel.calculateCameraX(initialCameraX)
+        viewModel.cameraX = 100f
+        val initialCameraX = viewModel.cameraX
+        val deadZoneLocation = initialCameraX + GameViewModel.GAME_WIDTH * (viewModel.leftDZRatio + 0.1f)
+        viewModel.player = Player(x = deadZoneLocation)
+        viewModel.calculateCameraX()
 
-        assertEquals(initialCameraX, result)
+        assertEquals(initialCameraX, viewModel.cameraX)
     }
 
     @Test
     fun `camera moves left when player is left of dead zone`() {
-        val initialCameraX = 100f
+        viewModel.cameraX = 100f
+        val initialCameraX = viewModel.cameraX
         val playerX = initialCameraX + GameViewModel.GAME_WIDTH * 0.2f
         viewModel.player = Player(x = playerX)
 
-        val result = viewModel.calculateCameraX(currCameraX = initialCameraX)
+        viewModel.calculateCameraX()
 
-        assertTrue(result < initialCameraX)
-        assertEquals((playerX - GameViewModel.GAME_WIDTH * 0.25f).coerceAtLeast(0f), result)
+        assertTrue(viewModel.cameraX < initialCameraX)
+
+        assertEquals(
+            (playerX - GameViewModel.GAME_WIDTH * viewModel.leftDZRatio)
+                .coerceAtLeast(0f), viewModel.cameraX
+        )
     }
 
     @Test
@@ -136,22 +151,22 @@ class GameViewModelTest {
         val playerX = initialCameraX + GameViewModel.GAME_WIDTH * 0.8f
         viewModel.player = Player(x = playerX)
 
-        val result = viewModel.calculateCameraX(initialCameraX)
+        viewModel.calculateCameraX()
 
-        val expected = (playerX + viewModel.player.width - GameViewModel.GAME_WIDTH * 0.75f)
+        val expected = (playerX + viewModel.player.width - GameViewModel.GAME_WIDTH * viewModel.rightDZRatio)
             .coerceAtMost(GameViewModel.WORLD_WIDTH - GameViewModel.GAME_WIDTH)
 
-        assertTrue(result > initialCameraX)
+        assertTrue(viewModel.cameraX > initialCameraX)
 
-        assertEquals(expected, result)
+        assertEquals(expected, viewModel.cameraX)
 
     }
 
     @Test
     fun `camera clamps to 0f when player moves too far left`() {
         viewModel.player = Player()
-        val result = viewModel.calculateCameraX(0f)
-        assertEquals(0f, result)
+        viewModel.calculateCameraX()
+        assertEquals(0f, viewModel.cameraX)
     }
 
     @Test
@@ -159,11 +174,11 @@ class GameViewModelTest {
         val playerX = GameViewModel.WORLD_WIDTH - viewModel.player.width
         viewModel.player = Player(x = playerX)
 
-        val result = viewModel.calculateCameraX(GameViewModel.WORLD_WIDTH - GameViewModel.GAME_WIDTH)
+        viewModel.calculateCameraX()
 
         val maxCameraX = GameViewModel.WORLD_WIDTH - GameViewModel.GAME_WIDTH
 
-        assertEquals(maxCameraX, result)
+        assertEquals(maxCameraX, viewModel.cameraX)
     }
 }
 
